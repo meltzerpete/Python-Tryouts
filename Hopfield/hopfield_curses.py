@@ -1,4 +1,4 @@
-import os, sys, curses, time
+import os, curses, time
 from random import randint
 
 def hop_fire(a, x):
@@ -16,13 +16,20 @@ def main(stdscr):
     # set up display
     stdscr.clear()
     stdscr.border(0)
+    # draw vertical separator
+    stdscr.addch(0, 34, '\u252c')
+    for i in range(1, curses.LINES - 1):
+        stdscr.addch(i, 34, '\u2502')
+    stdscr.addch(curses.LINES - 1, 34, '\u2534')
 
     # turn off cursor
     curses.curs_set(False)
 
-    # display message
-    stdscr.addstr(2, 40, "Press 's' to start.")
-    stdscr.addstr(3, 40, "Press 'q' to quit.")
+    # display messages
+    stdscr.addstr(16, 2, "Press 's' to start.")
+    stdscr.addstr(18, 2, "Press 'q' to quit.")
+
+    stdscr.addstr(2, 36, "Select input file ( \u2bc5 / \u2bc6 ):")
 
     # Read patterns from file
     counter = 0
@@ -49,6 +56,7 @@ def main(stdscr):
 
     # print(patterns)
 
+
     # 1. Assign connection weights
     # ============================
 
@@ -72,93 +80,124 @@ def main(stdscr):
     # print(weights)
 
 
-    # 2. Initialise with unkown pattern
-    # =================================
-    state = []
 
-    # read starting state from file
-    with open(sys.argv[1]) as f:
-        while True:
-            c = f.read(1)
-            if not c:
-                #print("End of file ", counter)
-                break
-            if c == '\n':
-                pass
-                #print("newline")
-            else:
-                state.append(int(c))
-                #print("Read a character: %s" % c)
+    # display files in Inputs directory
 
-    assert len(state) == n_nodes
+    start_row = 4
+    inc = 0
+    files = []
+    for filename in os.listdir('./Inputs'):
+        files.append("./Inputs/" + filename)
+        stdscr.addstr(start_row + inc, 38, str(inc + 1) + ". " + filename)
+        inc += 1
 
-    # display starting state
-    current = 0
-    for i in range(12):
-        for j in range(30):
-            if state[current] == 1:
-                stdscr.addch(2 + i, 2 + j, '\u2593')
-            else:
-                stdscr.addch(2 + i, 2 + j, '\u2591')
-            current += 1
-
-    # update display and pause until user signals start
-    stdscr.refresh()
-    key = ''
-    while key != ord('s'):
-        if key == ord('q'):
-            return
-        key = stdscr.getch()
-
-    # 3. Iterate until convergence
-    # ============================
-
-    breaker = 0;
-
-    # turn off cursor
-    curses.curs_set(True)
-
-    while breaker < 4 * n_nodes:
-        # Pick node at random
-        i = randint(0, n_nodes - 1)
-
-        # calculate energy
-        energy = 0
-        for j in range(n_nodes):
-            if i != j:
-                energy += weights[i][j] * state[j]
-
-        # update ith node
-        new_state = hop_fire(energy, state[i])
-
-        # display change
-        if new_state == 1:
-            stdscr.addch(2 + i // 30, 2 + i % 30, '\u2593')
+    selection = 0
+    stdscr.addch(4, 36, '\u2b62')
+    # loop while selecting input - s triggers start
+    key = '1'
+    while True:
+        if key != '1':
+            key = stdscr.getch()
         else:
-            stdscr.addch(2 + i // 30, 2 + i % 30, '\u2591')
+            key = ''
+
+        if key == ord('s'):
+            # 3. Iterate until convergence
+            # ============================
+
+            breaker = 0;
+
+            # turn off cursor
+            curses.curs_set(True)
+
+            while breaker < 4 * n_nodes:
+                # Pick node at random
+                i = randint(0, n_nodes - 1)
+
+                # calculate energy
+                energy = 0
+                for j in range(n_nodes):
+                    if i != j:
+                        energy += weights[i][j] * state[j]
+
+                # update ith node
+                new_state = hop_fire(energy, state[i])
+
+                # display change
+                if new_state == 1:
+                    stdscr.addch(2 + i // 30, 2 + i % 30, '\u2593')
+                else:
+                    stdscr.addch(2 + i // 30, 2 + i % 30, '\u2591')
+
+                stdscr.refresh()
+                time.sleep(0.001)
+
+
+                # check for convergence and update ith node
+                if state[i] == new_state:
+                    breaker += 1
+                else:
+                    breaker = 0
+                    state[i] = new_state
+
+            # finished
+            curses.curs_set(False)
+            stdscr.addstr(20, 2, "Finished! Press any key..")
+
+            while True:
+                exit_key = stdscr.getch()
+                stdscr.addstr(20, 2, "                         ")
+                if exit_key == ord('q'):
+                    exit()
+                break
 
         stdscr.refresh()
-        time.sleep(0.001)
 
+        if key == ord('q'):
+            return
 
-        # check for convergence and update ith node
-        if state[i] == new_state:
-            breaker += 1
-        else:
-            breaker = 0
-            state[i] = new_state
+        if key == curses.KEY_UP:
+            selection = max(0, selection - 1)
 
-    # finished
-    curses.curs_set(False)
-    stdscr.addstr(10, 40, "Finished!")
+        if key == curses.KEY_DOWN:
+            selection = min(len(files) - 1, selection + 1)
 
-    key = ''
-    while key != ord('q'):
-        key = stdscr.getch()
+        # display selection
+        start_row = 4
+        for i in range(len(files)):
+            if (i == selection):
+                stdscr.addch(start_row + i, 36, '\u2b62')
+            else:
+                stdscr.addch(start_row + i, 36, ' ')
 
-if len(sys.argv) <= 1:
-    print("\nYou must enter a starting pattern file as a command line argument.")
-    print("i.e. $ python3 hopfield_curses.py start1\n")
-    exit()
+        # 2. Initialise with unkown pattern
+        # =================================
+        state = []
+
+        # read starting state from file
+        with open(files[selection]) as f:
+            while True:
+                c = f.read(1)
+                if not c:
+                    #print("End of file ", counter)
+                    break
+                if c == '\n':
+                    pass
+                    #print("newline")
+                else:
+                    state.append(int(c))
+                    #print("Read a character: %s" % c)
+
+        assert len(state) == n_nodes
+
+        # display starting state
+        current = 0
+        for i in range(12):
+            for j in range(30):
+                if state[current] == 1:
+                    stdscr.addch(2 + i, 2 + j, '\u2593')
+                else:
+                    stdscr.addch(2 + i, 2 + j, '\u2591')
+                current += 1
 
 curses.wrapper(main)
