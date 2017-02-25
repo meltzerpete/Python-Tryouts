@@ -80,7 +80,6 @@ def main(stdscr):
     # print(weights)
 
 
-
     # display files in Inputs directory
 
     start_row = 4
@@ -96,6 +95,8 @@ def main(stdscr):
     # loop while selecting input - s triggers start
     key = '1'
     while True:
+
+        # don't check keypress for first run
         if key != '1':
             key = stdscr.getch()
         else:
