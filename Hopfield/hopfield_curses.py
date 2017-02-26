@@ -111,7 +111,12 @@ def main(stdscr):
             # turn off cursor
             curses.curs_set(True)
 
-            while breaker < 4 * n_nodes:
+            # variables for flow control
+            loop = 0
+            nbreaker = 0
+            old_total_energy = 0
+
+            while nbreaker < 100:
                 # Pick node at random
                 i = randint(0, n_nodes - 1)
 
@@ -121,33 +126,51 @@ def main(stdscr):
                     if i != j:
                         energy += weights[i][j] * state[j]
 
+                # calculate total energy - every 10 loops for performance
+                if loop == 0:
+                    total_energy = 0
+                    for n in range(len(weights)):
+                        for m in range(n + 1, len(weights[n])):
+                            total_energy += weights[n][m] * state[n] * state[m]
+
+                    total_energy = -1 * total_energy
+
+                    # display currrent total energy
+                    curses.curs_set(False)
+                    stdscr.addstr(20, 2, "Current energy:" + str(total_energy))
+                    curses.curs_set(True)
+
+                    # check for convergence
+                    if total_energy == old_total_energy:
+                        nbreaker += 1
+                    else:
+                        nbreaker = 0
+                    old_total_energy = total_energy
+
+                loop = (loop + 1) % 10
+
                 # update ith node
-                new_state = hop_fire(energy, state[i])
+                state[i] = hop_fire(energy, state[i])
 
                 # display change
-                if new_state == 1:
+                if state[i] == 1:
                     stdscr.addch(2 + i // 30, 2 + i % 30, '\u2593')
                 else:
                     stdscr.addch(2 + i // 30, 2 + i % 30, '\u2591')
 
+
                 stdscr.refresh()
+                # slow me down!!
                 time.sleep(0.001)
-
-
-                # check for convergence and update ith node
-                if state[i] == new_state:
-                    breaker += 1
-                else:
-                    breaker = 0
-                    state[i] = new_state
 
             # finished
             curses.curs_set(False)
-            stdscr.addstr(20, 2, "Finished! Press any key..")
+            stdscr.addstr(22, 2, "Finished! Press any key..")
 
             while True:
                 exit_key = stdscr.getch()
                 stdscr.addstr(20, 2, "                         ")
+                stdscr.addstr(22, 2, "                         ")
                 if exit_key == ord('q'):
                     exit()
                 break
