@@ -1,7 +1,7 @@
 Implementation of Hopfield Network with Curses UI
 =================================================
 
-To run type: `python3 hopfield\_curses.py` at the terminal.
+To run type: `python3 hopfield_curses.py` at the terminal.
 
 All patterns stored in the 'StoredPatterns' folder will be loaded and stored in the weights.
 
